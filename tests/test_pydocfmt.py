@@ -286,6 +286,24 @@ Examples:
         )
         self._format_and_check(doc, expected)
 
+    def test_description_with_indented_block(self):
+        doc = """Does something.
+
+Naming conventions:
+    *_py_pb2 -> _virtual_imports/<base>_proto/
+    *_py_pb2_grpc -> <target_name>_pb/"""
+        expected = textwrap.dedent(
+            """\
+            \"\"\"Does something.
+
+            Naming conventions:
+                *_py_pb2 -> _virtual_imports/<base>_proto/
+                *_py_pb2_grpc -> <target_name>_pb/
+            \"\"\"
+        """
+        )
+        self._format_and_check(doc, expected)
+
     def test_check_mode_flags_unformatted_file(self):
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".py", delete=False) as tf:
             tf.write(

@@ -400,7 +400,7 @@ def reflow(docstring: str, line_length: int, indent: str) -> list[str]:
         match = section_re.match(lines[i].strip())
         if match:
             break
-        description_lines.append(lines[i].strip())
+        description_lines.append(lines[i])
         i += 1
 
     # Section parsing
@@ -443,31 +443,40 @@ def reflow(docstring: str, line_length: int, indent: str) -> list[str]:
     if description_lines:
         result.append("\n")
         paragraph = []
+        in_indented_block = False
+
+        def flush_paragraph():
+            if not paragraph:
+                return
+            desc_paragraphs = _extract_lists(paragraph)
+            for section in desc_paragraphs:
+                if section and section[0].strip().startswith("-"):
+                    for item in section:
+                        result.append(f"{indent}{item.strip()}\n")
+                else:
+                    wrapped = textwrap.wrap(
+                        " ".join(section),
+                        width=line_length - len(indent),
+                        break_long_words=False,
+                        drop_whitespace=True,
+                    )
+                    for wline in wrapped:
+                        result.append(f"{indent}{wline}\n")
+            paragraph.clear()
+
         for line in description_lines + [""]:
-            if line.strip():
+            is_indented = line.strip() and (len(line) - len(line.lstrip()) > 0)
+            if is_indented:
+                flush_paragraph()
+                result.append(f"{indent}{line}\n")
+                in_indented_block = True
+            elif line.strip():
+                in_indented_block = False
                 paragraph.append(line.strip())
-            elif paragraph:
-                # Split paragraph into alternating text and list sections
-                desc_paragraphs = _extract_lists(paragraph)
-
-                for section in desc_paragraphs:
-                    if section and section[0].strip().startswith("-"):
-                        # This is a list section - format as list items
-                        for item in section:
-                            result.append(f"{indent}{item.strip()}\n")
-                    else:
-                        # This is a text section - wrap normally
-                        wrapped = textwrap.wrap(
-                            " ".join(section),
-                            width=line_length - len(indent),
-                            break_long_words=False,
-                            drop_whitespace=True,
-                        )
-                        for wline in wrapped:
-                            result.append(f"{indent}{wline}\n")
-
+            elif paragraph or in_indented_block:
+                flush_paragraph()
                 result.append("\n")
-                paragraph.clear()
+                in_indented_block = False
 
     # Remove trailing empty line if no sections follow
     if result and result[-1].strip() == "":
